@@ -23,3 +23,20 @@ add_library(sealpir STATIC
 )
 
 target_link_libraries(main sealpir seal)
+
+
+ ################################
+ # Benchmarks
+ ################################
+ ADD_SUBDIRECTORY (third_party/googletest)
+ ADD_SUBDIRECTORY (third_party/benchmark)
+ #enable_testing()
+ include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR} ${gmock_SOURCE_DIR}/include third_party/SEAL)
+
+ set(TESTING_SOURCES
+     benchmark.cpp
+ )
+ add_executable(benchmarks ${TESTING_SOURCES} )
+ target_link_libraries(benchmarks PRIVATE gtest benchmark benchmark_main sealpir seal)
+ add_test( benchmarks benchmarks )
+
