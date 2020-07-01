@@ -32,9 +32,11 @@ PirQuery PIRClient::generate_query(uint64_t desiredIndex) {
   for (uint32_t i = 0; i < indices_.size(); i++) {
     uint32_t num_ptxts = ceil((pir_params_.nvec[i] + 0.0) / N);
     // initialize result.
-    // cout << "Client: index " << i + 1  <<  "/ " <<  indices_.size() << " = "
-    // << indices_[i] << endl; cout << "Client: number of ctxts needed for query
-    // = " << num_ptxts << endl;
+#ifdef DEBUG
+    cout << "Client: index " << i + 1 << "/ " << indices_.size() << " = "
+         << indices_[i] << endl;
+    cout << "Client: number of ctxts needed for query = " << num_ptxts << endl;
+#endif
     for (uint32_t j = 0; j < num_ptxts; j++) {
       pt.set_zero();
       if (indices_[i] > N * (j + 1) || indices_[i] < N * j) {
@@ -44,7 +46,7 @@ PirQuery PIRClient::generate_query(uint64_t desiredIndex) {
         // just encrypt zero
       } else {
 #ifdef DEBUG
-        // cout << "Client: encrypting a real thing " << endl;
+        cout << "Client: encrypting a real thing " << endl;
 #endif
         uint64_t real_index = indices_[i] - N * j;
         pt[real_index] = 1;
@@ -84,8 +86,10 @@ Plaintext PIRClient::decode_reply(PirReply reply) {
   uint64_t t = params_.plain_modulus().value();
 
   for (uint32_t i = 0; i < recursion_level; i++) {
-    // cout << "Client: " << i + 1 << "/ " << recursion_level << "-th decryption
-    // layer started." << endl;
+#ifdef DEBUG
+    cout << "Client: " << i + 1 << "/ " << recursion_level
+         << "-th decryption layer started." << endl;
+#endif
     vector<Ciphertext> newtemp;
     vector<Plaintext> tempplain;
 
@@ -93,21 +97,22 @@ Plaintext PIRClient::decode_reply(PirReply reply) {
       Plaintext ptxt;
       decryptor_->decrypt(temp[j], ptxt);
 #ifdef DEBUG
-      // cout << "Client: reply noise budget = " <<
-      // decryptor_->invariant_noise_budget(temp[j]) << endl;
+      cout << "Client: reply noise budget = "
+           << decryptor_->invariant_noise_budget(temp[j]) << endl;
 #endif
       // multiply by inverse_scale for every coefficient of ptxt
       for (int h = 0; h < ptxt.coeff_count(); h++) {
         ptxt[h] *= inverse_scales_[recursion_level - 1 - i];
         ptxt[h] %= t;
       }
-      // cout << "decoded (and scaled) plaintext = " << ptxt.to_string() <<
-      // endl;
+#ifdef DEBUG
+      cout << "decoded (and scaled) plaintext = " << ptxt.to_string() << endl;
+#endif
       tempplain.push_back(ptxt);
 
 #ifdef DEBUG
-      // cout << "recursion level : " << i << " noise budget :  ";
-      // cout << decryptor_->invariant_noise_budget(temp[j]) << endl;
+      cout << "recursion level : " << i << " noise budget :  ";
+      cout << decryptor_->invariant_noise_budget(temp[j]) << endl;
 #endif
 
       if ((j + 1) % exp_ratio == 0 && j > 0) {
@@ -115,11 +120,15 @@ Plaintext PIRClient::decode_reply(PirReply reply) {
         Ciphertext combined = compose_to_ciphertext(tempplain);
         newtemp.push_back(combined);
         tempplain.clear();
-        // cout << "Client: const term of ciphertext = " << combined[0] << endl;
+#ifdef DEBUG
+        cout << "Client: const term of ciphertext = " << combined[0] << endl;
+#endif
       }
     }
-    // cout << "Client: done." << endl;
-    // cout << endl;
+#ifdef DEBUG
+    cout << "Client: done." << endl;
+    cout << endl;
+#endif
     if (i == recursion_level - 1) {
       assert(temp.size() == 1);
       return tempplain[0];
@@ -141,13 +150,12 @@ GaloisKeys PIRClient::generate_galois_keys() {
   int N = params_.poly_modulus_degree();
   int logN = get_power_of_two(N);
 
-  // cout << "printing galois elements...";
   for (int i = 0; i < logN; i++) {
     galois_elts.push_back((N + exponentiate_uint64(2, i)) /
                           exponentiate_uint64(2, i));
-    //#ifdef DEBUG
-    // cout << galois_elts.back() << ", ";
-    //#endif
+#ifdef DEBUG
+    cout << galois_elts.back() << ", ";
+#endif
   }
 
   return keygen_->galois_keys(pir_params_.dbc, galois_elts);
@@ -175,7 +183,9 @@ Ciphertext PIRClient::compose_to_ciphertext(vector<Plaintext> plains) {
       double logqj = log2(params_.coeff_modulus()[j].value());
       int expansion_ratio = ceil(logqj / logt);
       uint64_t cur = 1;
-      // cout << "Client: expansion_ratio = " << expansion_ratio << endl;
+#ifdef DEBUG
+      cout << "Client: expansion_ratio = " << expansion_ratio << endl;
+#endif
 
       for (int k = 0; k < expansion_ratio; k++) {
         // Compose here
@@ -230,7 +240,9 @@ void PIRClient::compute_inverse_scales() {
         ceil((pir_params_.nvec[i] + 0.0) / N);  // number of query ciphertexts.
     uint64_t batchId = indices_[i] / N;
     if (batchId == numCtxt - 1) {
-      // cout << "Client: adjusting the logm value..." << endl;
+#ifdef DEBUG
+      cout << "Client: adjusting the logm value..." << endl;
+#endif
       logm = ceil(log2((pir_params_.nvec[i] % N)));
     }
 
@@ -246,7 +258,9 @@ void PIRClient::compute_inverse_scales() {
     if ((inverse_scale << logm) % t != 1) {
       throw logic_error("something wrong");
     }
-    // cout << "Client: logm, inverse scale, t = " << logm << ", " <<
-    // inverse_scale << ", " << t << endl;
+#ifdef DEBUG
+    cout << "Client: logm, inverse scale, t = " << logm << ", " << inverse_scale
+         << ", " << t << endl;
+#endif
   }
 }

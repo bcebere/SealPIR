@@ -36,7 +36,7 @@ target_link_libraries(main sealpir seal)
  set(TESTING_SOURCES
      benchmark.cpp
  )
- add_executable(benchmarks ${TESTING_SOURCES} )
- target_link_libraries(benchmarks PRIVATE gtest benchmark benchmark_main sealpir seal)
- add_test( benchmarks benchmarks )
+ add_executable(sealpir_benchmark ${TESTING_SOURCES} )
+ target_link_libraries(sealpir_benchmark PRIVATE gtest benchmark benchmark_main sealpir seal)
+ add_test(sealpir_benchmark sealpir_benchmark)
 

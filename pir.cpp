@@ -42,8 +42,8 @@ void gen_params(uint64_t ele_num, uint64_t ele_size, uint32_t N, uint32_t logt,
   uint64_t plaintext_num = plaintexts_per_db(logt, N, ele_num, ele_size);
 
 #ifdef DEBUG
-  // cout << "log(plain mod) before expand = " << logt << endl;
-  // cout << "number of FV plaintexts = " << plaintext_num << endl;
+  cout << "log(plain mod) before expand = " << logt << endl;
+  cout << "number of FV plaintexts = " << plaintext_num << endl;
 #endif
 
   vector<SmallModulus> coeff_mod_array;
@@ -64,7 +64,9 @@ void gen_params(uint64_t ele_num, uint64_t ele_size, uint32_t N, uint32_t logt,
   uint32_t expansion_ratio = 0;
   for (uint32_t i = 0; i < params.coeff_modulus().size(); ++i) {
     double logqi = log2(params.coeff_modulus()[i].value());
-    // cout << "PIR: logqi = " << logqi << endl;
+#ifdef DEBUG
+    cout << "PIR: logqi = " << logqi << endl;
+#endif
     expansion_ratio += ceil(logqi / logt);
   }
 

@@ -62,9 +62,9 @@ void PIRServer::set_database(const std::unique_ptr<const std::uint8_t[]> &bytes,
       ele_per_ptxt * coefficients_per_element(logt, ele_size);
   assert(coeff_per_ptxt <= N);
 
-  cout << "Server: total number of FV plaintext = " << total << endl;
-  cout << "Server: elements packed into each plaintext " << ele_per_ptxt
-       << endl;
+  // cout << "Server: total number of FV plaintext = " << total << endl;
+  // cout << "Server: elements packed into each plaintext " << ele_per_ptxt
+  //     << endl;
 
   uint32_t offset = 0;
 
@@ -147,21 +147,29 @@ PirReply PIRServer::generate_reply(PirQuery query, uint32_t client_id) {
 
   int logt = floor(log2(params_.plain_modulus().value()));
 
+#ifdef DEBUG
   cout << "expansion ratio = " << pir_params_.expansion_ratio << endl;
+#endif
   for (uint32_t i = 0; i < nvec.size(); i++) {
+#ifdef DEBUG
     cout << "Server: " << i + 1 << "-th recursion level started " << endl;
+#endif
 
     vector<Ciphertext> expanded_query;
 
     uint64_t n_i = nvec[i];
+#ifdef DEBUG
     cout << "Server: n_i = " << n_i << endl;
     cout << "Server: expanding " << query[i].size() << " query ctxts" << endl;
+#endif
     for (uint32_t j = 0; j < query[i].size(); j++) {
       uint64_t total = N;
       if (j == query[i].size() - 1) {
         total = n_i % N;
       }
+#ifdef DEBUG
       cout << "-- expanding one query ctxt into " << total << " ctxts " << endl;
+#endif
       vector<Ciphertext> expanded_query_part =
           expand_query(query[i][j], total, client_id);
       expanded_query.insert(
@@ -170,23 +178,13 @@ PirReply PIRServer::generate_reply(PirQuery query, uint32_t client_id) {
           std::make_move_iterator(expanded_query_part.end()));
       expanded_query_part.clear();
     }
+#ifdef DEBUG
     cout << "Server: expansion done " << endl;
     if (expanded_query.size() != n_i) {
       cout << " size mismatch!!! " << expanded_query.size() << ", " << n_i
            << endl;
     }
-
-    /*
-    cout << "Checking expanded query " << endl;
-    Plaintext tempPt;
-    for (int h = 0 ; h < expanded_query.size(); h++){
-        cout << "noise budget = " <<
-    client.decryptor_->invariant_noise_budget(expanded_query[h]) << ", ";
-        client.decryptor_->decrypt(expanded_query[h], tempPt);
-        cout << tempPt.to_string()  << endl;
-    }
-    cout << endl;
-    */
+#endif
 
     // Transform expanded query to NTT, and ...
     for (uint32_t jj = 0; jj < expanded_query.size(); jj++) {
@@ -197,12 +195,6 @@ PirReply PIRServer::generate_reply(PirQuery query, uint32_t client_id) {
     if ((!is_db_preprocessed_) || i > 0) {
       for (uint32_t jj = 0; jj < cur->size(); jj++) {
         evaluator_->transform_to_ntt_inplace((*cur)[jj], params_.parms_id());
-      }
-    }
-
-    for (uint64_t k = 0; k < product; k++) {
-      if ((*cur)[k].is_zero()) {
-        cout << k + 1 << "/ " << product << "-th ptxt = 0 " << endl;
       }
     }
 
@@ -225,9 +217,6 @@ PirReply PIRServer::generate_reply(PirQuery query, uint32_t client_id) {
 
     for (uint32_t jj = 0; jj < intermediateCtxts.size(); jj++) {
       evaluator_->transform_from_ntt_inplace(intermediateCtxts[jj]);
-      // print intermediate ctxts?
-      // cout << "const term of ctxt " << jj << " = " <<
-      // intermediateCtxts[jj][0] << endl;
     }
 
     if (i == nvec.size() - 1) {
@@ -252,11 +241,12 @@ PirReply PIRServer::generate_reply(PirQuery query, uint32_t client_id) {
       }
       product *= pir_params_.expansion_ratio;  // multiply by expansion rate.
     }
+#ifdef DEBUG
     cout << "Server: " << i + 1 << "-th recursion level finished " << endl;
     cout << endl;
+#endif
   }
-  cout << "reply generated!  " << endl;
-  // This should never get here
+
   assert(0);
   vector<Ciphertext> fail(1);
   return fail;
@@ -304,34 +294,44 @@ inline vector<Ciphertext> PIRServer::expand_query(const Ciphertext &encrypted,
       evaluator_->apply_galois(temp[a], galois_elts[i], galkey,
                                tempctxt_rotated);
 
-      // cout << "rotate " <<
-      // client.decryptor_->invariant_noise_budget(tempctxt_rotated) << ", ";
+#ifdef DEBUG
+      cout << "rotate "
+           << client.decryptor_->invariant_noise_budget(tempctxt_rotated)
+           << ", ";
+#endif
 
       evaluator_->add(temp[a], tempctxt_rotated, newtemp[a]);
       multiply_power_of_X(temp[a], tempctxt_shifted, index_raw);
 
-      // cout << "mul by x^pow: " <<
-      // client.decryptor_->invariant_noise_budget(tempctxt_shifted) << ", ";
+#ifdef DEBUG
+      cout << "mul by x^pow: "
+           << client.decryptor_->invariant_noise_budget(tempctxt_shifted)
+           << ", ";
+#endif
 
       multiply_power_of_X(tempctxt_rotated, tempctxt_rotatedshifted, index);
 
-      // cout << "mul by x^pow: " <<
-      // client.decryptor_->invariant_noise_budget(tempctxt_rotatedshifted) <<
-      // ", ";
+#ifdef DEBUG
+      cout << "mul by x^pow: "
+           << client.decryptor_->invariant_noise_budget(tempctxt_rotatedshifted)
+           << ", ";
+#endif
 
       // Enc(2^i x^j) if j = 0 (mod 2**i).
       evaluator_->add(tempctxt_shifted, tempctxt_rotatedshifted,
                       newtemp[a + temp.size()]);
     }
     temp = newtemp;
-    /*
+
+#ifdef DEBUG
     cout << "end: ";
-    for (int h = 0; h < temp.size();h++){
-        cout << client.decryptor_->invariant_noise_budget(temp[h]) << ", ";
+    for (int h = 0; h < temp.size(); h++) {
+      cout << client.decryptor_->invariant_noise_budget(temp[h]) << ", ";
     }
     cout << endl;
-    */
+#endif
   }
+
   // Last step of the loop
   vector<Ciphertext> newtemp(temp.size() << 1);
   int index_raw = (n << 1) - (1 << (logm - 1));
@@ -340,7 +340,9 @@ inline vector<Ciphertext> PIRServer::expand_query(const Ciphertext &encrypted,
     if (a >= (m - (1 << (logm - 1)))) {  // corner case.
       evaluator_->multiply_plain(temp[a], two,
                                  newtemp[a]);  // plain multiplication by 2.
-      // cout << client.decryptor_->invariant_noise_budget(newtemp[a]) << ", ";
+#ifdef DEBUG
+      cout << client.decryptor_->invariant_noise_budget(newtemp[a]) << ", ";
+#endif
     } else {
       evaluator_->apply_galois(temp[a], galois_elts[logm - 1], galkey,
                                tempctxt_rotated);
@@ -365,8 +367,10 @@ inline void PIRServer::multiply_power_of_X(const Ciphertext &encrypted,
   auto coeff_count = params_.poly_modulus_degree();
   auto encrypted_count = encrypted.size();
 
-  // cout << "coeff mod count for power of X = " << coeff_mod_count << endl;
-  // cout << "coeff count for power of X = " << coeff_count << endl;
+#ifdef DEBUG
+  cout << "coeff mod count for power of X = " << coeff_mod_count << endl;
+  cout << "coeff count for power of X = " << coeff_count << endl;
+#endif
 
   // First copy over.
   destination = encrypted;
