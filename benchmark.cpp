@@ -16,15 +16,13 @@ using namespace std;
 using namespace seal;
 
 uint32_t logt = 12;
-uint32_t d = 2;
+uint32_t dimensions = 2;
+
 uint64_t size_per_item = 8;  // in bytes
-uint32_t N = 2048;
+uint32_t poly_modulus_degree = 4096;
 
 std::unique_ptr<uint8_t[]> generateDB(std::size_t number_of_items) {
   auto db(make_unique<uint8_t[]>(number_of_items * size_per_item));
-
-  // Copy of the database. We use this at the end to make sure we retrieved
-  // the correct element.
 
   random_device rd;
   for (uint64_t i = 0; i < number_of_items; i++) {
@@ -42,7 +40,8 @@ void BM_DatabaseLoad(benchmark::State& state) {
 
   EncryptionParameters params(scheme_type::BFV);
   PirParams pir_params;
-  gen_params(dbsize, size_per_item, N, logt, d, params, pir_params);
+  gen_params(dbsize, size_per_item, poly_modulus_degree, logt, dimensions,
+             params, pir_params);
 
   PIRServer server(params, pir_params);
   PIRClient client(params, pir_params);
@@ -69,15 +68,16 @@ void BM_ClientCreateRequest(benchmark::State& state) {
   EncryptionParameters params(scheme_type::BFV);
   PirParams pir_params;
 
-  gen_params(dbsize, size_per_item, N, logt, d, params, pir_params);
+  gen_params(dbsize, size_per_item, poly_modulus_degree, logt, dimensions,
+             params, pir_params);
 
   PIRClient client(params, pir_params);
 
-  uint64_t desiredIndex = 1;  // element in DB at random position
-  uint64_t index = client.get_fv_index(desiredIndex,
+  uint64_t desired_index = dbsize - 1;  // element in DB
+  uint64_t index = client.get_fv_index(desired_index,
                                        size_per_item);  // index of FV plaintext
   uint64_t offset = client.get_fv_offset(
-      desiredIndex, size_per_item);  // offset in FV plaintext
+      desired_index, size_per_item);  // offset in FV plaintext
 
   int64_t elements_processed = 0;
   for (auto _ : state) {
@@ -97,7 +97,8 @@ void BM_ServerProcessRequest(benchmark::State& state) {
 
   EncryptionParameters params(scheme_type::BFV);
   PirParams pir_params;
-  gen_params(dbsize, size_per_item, N, logt, d, params, pir_params);
+  gen_params(dbsize, size_per_item, poly_modulus_degree, logt, dimensions,
+             params, pir_params);
 
   auto db = move(generateDB(dbsize));
 
@@ -110,7 +111,7 @@ void BM_ServerProcessRequest(benchmark::State& state) {
   server.set_database(move(db), dbsize, size_per_item);
   server.preprocess_database();
 
-  uint64_t desired_index = 1;  // element in DB
+  uint64_t desired_index = dbsize - 1;  // element in DB
   uint64_t index = client.get_fv_index(desired_index,
                                        size_per_item);  // index of FV plaintext
   uint64_t offset = client.get_fv_offset(
@@ -135,7 +136,8 @@ void BM_ClientProcessResponse(benchmark::State& state) {
 
   EncryptionParameters params(scheme_type::BFV);
   PirParams pir_params;
-  gen_params(dbsize, size_per_item, N, logt, d, params, pir_params);
+  gen_params(dbsize, size_per_item, poly_modulus_degree, logt, dimensions,
+             params, pir_params);
 
   auto db = move(generateDB(dbsize));
 
@@ -148,7 +150,7 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   server.set_database(move(db), dbsize, size_per_item);
   server.preprocess_database();
 
-  uint64_t desired_index = 1;  // element in DB
+  uint64_t desired_index = dbsize - 1;  // element in DB
   uint64_t index = client.get_fv_index(desired_index,
                                        size_per_item);  // index of FV plaintext
   uint64_t offset = client.get_fv_offset(
